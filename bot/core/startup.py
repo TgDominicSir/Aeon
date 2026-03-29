@@ -1,9 +1,9 @@
-from asyncio import create_subprocess_shell, sleep
+from asyncio import create_subprocess_shell
 from os import environ
 
 import aiohttp
 from aiofiles import open as aiopen
-from aiofiles.os import makedirs, remove
+from aiofiles.os import makedirs
 from aiofiles.os import path as aiopath
 from aioshutil import rmtree
 
