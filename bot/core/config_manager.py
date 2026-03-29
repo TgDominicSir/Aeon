@@ -26,7 +26,7 @@ class Config:
     HYBRID_LEECH: bool = False
     NAME_SUBSTITUTE: str = r""
     OWNER_ID: int = 0
-    QUEUE_ALL: int = 0
+    QUEUE_ALL: int = 12
     QUEUE_DOWNLOAD: int = 0
     QUEUE_UPLOAD: int = 0
     SUDO_USERS: str = ""
@@ -41,7 +41,7 @@ class Config:
     USER_TRANSMISSION: bool = False
     YT_DLP_OPTIONS: ClassVar[dict[str, Any]] = {}
 
-    # Aeon-MLTB Specific / Custom Features
+    # Specific / Custom Features
     METADATA_KEY: str = ""
     WATERMARK_KEY: str = ""
     SET_COMMANDS: bool = True

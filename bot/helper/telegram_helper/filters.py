@@ -1,6 +1,6 @@
 from pyrogram.filters import create
 
-from bot import auth_chats, sudo_users, user_data
+from bot import sudo_users, user_data
 from bot.core.config_manager import Config
 
 
@@ -12,41 +12,8 @@ class CustomFilters:
     owner = create(owner_filter)
 
     async def authorized_user(self, _, update):
-        user = update.from_user or update.sender_chat
-        uid = user.id
-        chat_id = update.chat.id
-        thread_id = update.message_thread_id if update.topic_message else None
-        return bool(
-            uid == Config.OWNER_ID
-            or (
-                uid in user_data
-                and (
-                    user_data[uid].get("AUTH", False)
-                    or user_data[uid].get("SUDO", False)
-                )
-            )
-            or (
-                chat_id in user_data
-                and user_data[chat_id].get("AUTH", False)
-                and (
-                    thread_id is None
-                    or thread_id in user_data[chat_id].get("thread_ids", [])
-                )
-            )
-            or uid in sudo_users
-            or uid in auth_chats
-            or (
-                chat_id in auth_chats
-                and (
-                    (
-                        auth_chats[chat_id]
-                        and thread_id
-                        and thread_id in auth_chats[chat_id]
-                    )
-                    or not auth_chats[chat_id]
-                )
-            ),
-        )
+        # Allow everyone in PM and groups
+        return True
 
     authorized = create(authorized_user)
 

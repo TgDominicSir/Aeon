@@ -5,10 +5,32 @@ A lightweight and efficient Telegram bot for downloading media from YouTube, Tik
 ## Features
 
 - **Fast Downloader**: Powered by `yt-dlp` for high-speed downloads.
-- **Multiple Platform Support**: Download from YouTube, TikTok, Instagram, and more.
-- **Direct Telegram Upload**: Files are sent directly to your Telegram chat.
-- **Status Bar**: Real-time progress tracking for downloads and uploads.
-- **Easy Deployment**: Ready for Heroku and VPS.
+- **Universal Access**: Works for everyone in Private Messages and in any group where the bot is an admin.
+- **Real-time Status**: Follow your downloads with a sleek progress bar.
+- **Customizable**: Change settings like maximum concurrent tasks (default: 12) on the fly.
+- **Easy Deployment**: Fully compatible with Heroku and VPS.
+
+## User Settings
+
+Users can customize their experience using the `/settings` command:
+
+- **LEECH_SPLIT_SIZE**: Set the maximum size for a single file (e.g., 2GB).
+- **AS_DOCUMENT**: Choose to receive files as documents instead of media.
+- **MEDIA_GROUP**: Send multiple files from a single link as a media group.
+- **NAME_PREFIX**: Add a custom prefix to all downloaded files.
+- **THUMBNAIL**: Upload a custom thumbnail for your downloads.
+
+## Supported Sites
+
+This bot supports all sites compatible with `yt-dlp`, including:
+
+- **YouTube**: Videos, Shorts, Playlists.
+- **TikTok**: Videos (with/without watermark).
+- **Instagram**: Reels, IGTV, Posts.
+- **Twitter/X**: Videos.
+- **Facebook**: Public videos.
+- **SoundCloud**: Audio tracks.
+- **And 1000+ more!** [Full list here](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md).
 
 ## Setup and Deployment
 
@@ -21,9 +43,9 @@ A lightweight and efficient Telegram bot for downloading media from YouTube, Tik
 
 ### Optional Configuration
 
-- `DATABASE_URL`: MongoDB URL for persisting settings.
-- `LEECH_SPLIT_SIZE`: Max size for a single file (default: 2GB).
-- `LEECH_DUMP_CHAT`: Chat ID where files will be dumped.
+- `DATABASE_URL`: MongoDB URL for persisting settings and custom thumbnails.
+- `QUEUE_ALL`: Maximum concurrent tasks bot-wide (default: 12).
+- `LEECH_DUMP_CHAT`: Chat ID where all downloads will be logged/backed up.
 
 ### Deployment on Heroku
 
@@ -37,17 +59,25 @@ A lightweight and efficient Telegram bot for downloading media from YouTube, Tik
 
 1. Clone the repository.
 2. Install dependencies: `pip install -r requirements.txt`.
-3. Fill the `config.py` file based on `config_sample.py`.
+3. Create a `config.py` file or set Environment Variables.
 4. Run the bot: `python3 -m bot`.
 
 ## Usage
 
-- `/ytdl [link]` - Download media as a video/audio based on selection.
-- `/ytdlleech [link]` - Leech media directly.
-- `/status` - Check current active tasks.
-- `/cancel` - Cancel a task.
+- `/ytdl [link]` - Download media with format selection (Video/Audio/Quality).
+- `/ytdlleech [link]` - Download the best available quality directly.
+- `/status` - View all active downloads and bot performance.
+- `/settings` - Access your personal download settings.
+- `/cancel` - Stop an ongoing task.
+
+## Admin Commands (Owner/Sudo Only)
+
+- `/botsettings` - Configure bot-wide limits and variables.
+- `/stats` - Detailed system and bot statistics.
+- `/restart` - Reboot the bot instance.
+- `/log` - View recent bot logs.
 
 ## Acknowledgements
 
-- Based on [Aeon-MLTB](https://github.com/AeonOrg/Aeon-MLTB).
-- Powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [Pyrogram](https://github.com/pyrogram/pyrogram).
+- Refactored from [Aeon-MLTB](https://github.com/AeonOrg/Aeon-MLTB).
+- Core powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [Pyrogram](https://github.com/pyrogram/pyrogram).

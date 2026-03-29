@@ -31,7 +31,13 @@ from bot.helper.telegram_helper.message_utils import (
 
 async def get_download_status(download):
     tool = download.tool
-    speed = download.speed() if tool in ["telegram", "yt-dlp"] else 0
+    if tool in [
+        "telegram",
+        "yt-dlp",
+    ]:
+        speed = download.speed()
+    else:
+        speed = 0
     return (
         await download.status()
         if iscoroutinefunction(download.status)
