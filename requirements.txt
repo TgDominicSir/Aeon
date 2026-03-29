@@ -1,10 +1,9 @@
 asyncio
+aiohttp
 aiofiles
 aioshutil
 anytree
 apscheduler
-aioaria2
-aioqbt
 cloudscraper
 dnspython
 ElectroCrypto
@@ -29,10 +28,8 @@ pytz
 pytdbot[tdjson]
 requests
 speedtest-cli
-truelink
 telegraph
 tenacity
 uvicorn
 uvloop
-xattr
 yt-dlp[default,curl-cffi]

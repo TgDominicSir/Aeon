@@ -1,5 +1,4 @@
-from asyncio import create_subprocess_exec, wait_for
-from asyncio.subprocess import PIPE
+from asyncio import create_subprocess_exec
 from os import path as ospath
 from os import readlink, walk
 from re import IGNORECASE, escape
@@ -25,7 +24,6 @@ from aioshutil import rmtree as aiormtree
 from magic import Magic
 
 from bot import DOWNLOAD_DIR, LOGGER
-from bot.core.torrent_manager import TorrentManager
 
 from .bot_utils import cmd_exec, sync_to_async
 from .exceptions import NotSupportedExtractionArchive
@@ -143,8 +141,7 @@ async def clean_download(path: str):
 
 
 async def clean_all():
-    """Cleans up all torrents and the main download directory."""
-    await TorrentManager.remove_all()
+    """Cleans up the main download directory."""
     LOGGER.info("Cleaning Download Directory...")
     await (await create_subprocess_exec("rm", "-rf", DOWNLOAD_DIR)).wait()
     await aiomakedirs(DOWNLOAD_DIR, exist_ok=True)
@@ -286,6 +283,7 @@ async def join_files(opath):
 
 
 async def split_file(f_path, split_size, listener):
+    from asyncio import wait_for
     out_path = f"{f_path}."
     if listener.is_cancelled:
         return False
@@ -329,6 +327,7 @@ class SevenZ:
         return self._percentage
 
     async def _sevenz_progress(self):
+        from asyncio import wait_for
         pattern = r"(\d+)\s+bytes|Total Physical Size\s*=\s*(\d+)|Physical Size\s*=\s*(\d+)"
         while not (
             self._listener.subproc.returncode is not None
@@ -432,7 +431,7 @@ class SevenZ:
             "-bse1",
             "-bb3",
         ]
-        if self._listener.is_leech and int(size) > self._listener.split_size:
+        if int(size) > self._listener.split_size:
             if not pswd:
                 del cmd[4]
             LOGGER.info(f"Zip: orig_path: {dl_path}, zip_path: {up_path}.0*")

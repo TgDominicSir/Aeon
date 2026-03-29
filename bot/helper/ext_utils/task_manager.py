@@ -9,47 +9,6 @@ from bot import (
     queued_up,
 )
 from bot.core.config_manager import Config
-from bot.helper.mirror_leech_utils.gdrive_utils.search import GoogleDriveSearch
-
-from .bot_utils import get_telegraph_list, sync_to_async
-from .files_utils import get_base_name
-from .links_utils import is_gdrive_id
-
-
-async def stop_duplicate_check(listener):
-    if (
-        listener.is_leech
-        or not listener.stop_duplicate
-        or listener.same_dir
-        or listener.select
-        or not is_gdrive_id(listener.up_dest)
-    ):
-        return False, None
-
-    name = listener.name
-    LOGGER.info(f"Checking File/Folder if already in Drive: {name}")
-
-    if listener.compress:
-        name = f"{name}.7z"
-    elif listener.extract:
-        try:
-            name = get_base_name(name)
-        except Exception:
-            name = None
-
-    if name is not None:
-        telegraph_content, contents_no = await sync_to_async(
-            GoogleDriveSearch(stop_dup=True, no_multi=listener.is_clone).drive_list,
-            name,
-            listener.up_dest,
-            listener.user_id,
-        )
-        if telegraph_content:
-            msg = f"File/Folder is already available in Drive.\nHere are {contents_no} list results:"
-            button = await get_telegraph_list(telegraph_content)
-            return msg, button
-
-    return False, None
 
 
 async def check_running_tasks(listener, state="dl"):

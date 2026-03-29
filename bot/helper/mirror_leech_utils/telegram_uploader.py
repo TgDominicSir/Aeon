@@ -33,7 +33,7 @@ from tenacity import (
 from bot import intervals
 from bot.core.config_manager import Config
 from bot.core.telegram_manager import TgClient
-from bot.helper.aeon_utils.caption_gen import generate_caption
+from bot.helper.dominic_utils.caption_gen import generate_caption
 from bot.helper.ext_utils.bot_utils import sync_to_async
 from bot.helper.ext_utils.files_utils import (
     get_base_name,
@@ -67,7 +67,6 @@ class TelegramUploader:
         self._media_dict = {"videos": {}, "documents": {}}
         self._last_msg_in_group = False
         self._up_path = ""
-        self._user_dump = ""
         self._lcaption = ""
         self._media_group = False
         self._is_private = False
@@ -97,7 +96,6 @@ class TelegramUploader:
             if "NAME_PREFIX" not in self._listener.user_dict
             else ""
         )
-        self._user_dump = self._listener.user_dict.get("USER_DUMP")
         self._lcaption = self._listener.user_dict.get("LEECH_FILENAME_CAPTION") or (
             Config.LEECH_FILENAME_CAPTION
             if "LEECH_FILENAME_CAPTION" not in self._listener.user_dict
@@ -542,9 +540,6 @@ class TelegramUploader:
         if self._sent_msg.chat.id != self._user_id:
             await _copy(self._user_id)
 
-        if self._user_dump:
-            with contextlib.suppress(Exception):
-                await _copy(int(self._user_dump))
         if (
             isinstance(Config.LEECH_DUMP_CHAT, list)
             and len(Config.LEECH_DUMP_CHAT) > 1

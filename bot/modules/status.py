@@ -7,13 +7,10 @@ from bot import (
     DOWNLOAD_DIR,
     bot_start_time,
     intervals,
-    sabnzbd_client,
     status_dict,
     task_dict,
     task_dict_lock,
 )
-from bot.core.jdownloader_booter import jdownloader
-from bot.core.torrent_manager import TorrentManager
 from bot.helper.ext_utils.bot_utils import new_task
 from bot.helper.ext_utils.status_utils import (
     MirrorStatus,
@@ -37,9 +34,6 @@ async def get_download_status(download):
     if tool in [
         "telegram",
         "yt-dlp",
-        "rclone",
-        "gDriveApi",
-        "gofile",
     ]:
         speed = download.speed()
     else:
@@ -107,38 +101,22 @@ async def status_pages(_, query):
                 status_dict[key]["status"] = data[3]
         await update_status_message(key, force=True)
     elif data[2] == "ov":
-        ds, ss = await TorrentManager.overall_speed()
-        if sabnzbd_client.LOGGED_IN:
-            sds = await sabnzbd_client.get_downloads()
-            sds = int(float(sds["queue"].get("kbpersec", "0"))) * 1024
-            ds += sds
-        if jdownloader.is_connected:
-            jdres = await jdownloader.device.downloadcontroller.get_speed_in_bytes()
-            ds += jdres
         message = query.message
         tasks = {
             "Download": 0,
             "Upload": 0,
-            "Seed": 0,
             "Archive": 0,
             "Extract": 0,
             "Split": 0,
             "QueueDl": 0,
             "QueueUp": 0,
-            "Clone": 0,
-            "CheckUp": 0,
             "Pause": 0,
             "SamVid": 0,
             "ConvertMedia": 0,
             "FFmpeg": 0,
-            "Metadata": 0,
-            "Watermark": 0,
-            "EmbedThumb": 0,
-            "YtUp": 0,
         }
-        dl_speed = ds
+        dl_speed = 0
         up_speed = 0
-        seed_speed = ss
         async with task_dict_lock:
             status_results = await gather(
                 *(get_download_status(download) for download in task_dict.values()),
@@ -152,8 +130,6 @@ async def status_pages(_, query):
                     case MirrorStatus.STATUS_UPLOAD:
                         tasks["Upload"] += 1
                         up_speed += speed_string_to_bytes(speed)
-                    case MirrorStatus.STATUS_SEED:
-                        tasks["Seed"] += 1
                     case MirrorStatus.STATUS_ARCHIVE:
                         tasks["Archive"] += 1
                     case MirrorStatus.STATUS_EXTRACT:
@@ -164,10 +140,6 @@ async def status_pages(_, query):
                         tasks["QueueDl"] += 1
                     case MirrorStatus.STATUS_QUEUEUP:
                         tasks["QueueUp"] += 1
-                    case MirrorStatus.STATUS_CLONE:
-                        tasks["Clone"] += 1
-                    case MirrorStatus.STATUS_CHECK:
-                        tasks["CheckUp"] += 1
                     case MirrorStatus.STATUS_PAUSED:
                         tasks["Pause"] += 1
                     case MirrorStatus.STATUS_SAMVID:
@@ -176,26 +148,15 @@ async def status_pages(_, query):
                         tasks["ConvertMedia"] += 1
                     case MirrorStatus.STATUS_FFMPEG:
                         tasks["FFmpeg"] += 1
-                    case MirrorStatus.STATUS_METADATA:
-                        tasks["Metadata"] += 1
-                    case MirrorStatus.STATUS_WATERMARK:
-                        tasks["Watermark"] += 1
-                    case MirrorStatus.STATUS_ETHUMB:
-                        tasks["EmbedThumb"] += 1
-                    case MirrorStatus.STATUS_YT:
-                        tasks["YtUp"] += 1
                     case _:
                         tasks["Download"] += 1
 
-        msg = f"""<b>DL:</b> {tasks["Download"]} | <b>UP:</b> {tasks["Upload"]} | <b>SD:</b> {tasks["Seed"]} | <b>AR:</b> {tasks["Archive"]}
+        msg = f"""<b>DL:</b> {tasks["Download"]} | <b>UP:</b> {tasks["Upload"]} | <b>AR:</b> {tasks["Archive"]}
 <b>EX:</b> {tasks["Extract"]} | <b>SP:</b> {tasks["Split"]} | <b>QD:</b> {tasks["QueueDl"]} | <b>QU:</b> {tasks["QueueUp"]}
-<b>CL:</b> {tasks["Clone"]} | <b>CK:</b> {tasks["CheckUp"]} | <b>PA:</b> {tasks["Pause"]} | <b>SV:</b> {tasks["SamVid"]}
-<b>CM:</b> {tasks["ConvertMedia"]} | <b>FF:</b> {tasks["FFmpeg"]} | <b>MD:</b> {tasks["Metadata"]} | <b>WM:</b> {tasks["Watermark"]}
-<b>ET:</b> {tasks["EmbedThumb"]} | <b>YT:</b> {tasks["YtUp"]}
+<b>PA:</b> {tasks["Pause"]} | <b>SV:</b> {tasks["SamVid"]} | <b>CM:</b> {tasks["ConvertMedia"]} | <b>FF:</b> {tasks["FFmpeg"]}
 
 <b>ODLS:</b> {get_readable_file_size(dl_speed)}/s
 <b>OULS:</b> {get_readable_file_size(up_speed)}/s
-<b>OSDS:</b> {get_readable_file_size(seed_speed)}/s
 """
         button = ButtonMaker()
         button.data_button("Back", f"status {data[1]} ref")

@@ -1,8 +1,6 @@
 import contextlib
 import os
-from asyncio import gather, sleep
-from collections import Counter
-from copy import deepcopy
+from asyncio import sleep
 from os import path as ospath
 from os import walk
 from re import IGNORECASE, findall, sub
@@ -12,7 +10,6 @@ from shlex import split
 from aiofiles.os import listdir, makedirs, remove
 from aiofiles.os import path as aiopath
 from aioshutil import move, rmtree
-from pyrogram.enums import ChatAction
 
 from bot import (
     DOWNLOAD_DIR,
@@ -29,11 +26,6 @@ from bot import (
 )
 from bot.core.config_manager import Config
 from bot.core.telegram_manager import TgClient
-from bot.helper.aeon_utils.command_gen import (
-    get_embed_thumb_cmd,
-    get_metadata_cmd,
-    get_watermark_cmd,
-)
 
 from .ext_utils.bot_utils import get_size_bytes, new_task, sync_to_async
 from .ext_utils.bulk_links import extract_bulk_links
@@ -46,33 +38,21 @@ from .ext_utils.files_utils import (
     is_first_archive_split,
     split_file,
 )
-from .ext_utils.links_utils import (
-    is_gdrive_id,
-    is_gdrive_link,
-    is_rclone_path,
-    is_telegram_link,
-)
 from .ext_utils.media_utils import (
     FFMpeg,
-    create_thumb,
     get_document_type,
-    is_mkv,
     take_ss,
 )
-from .mirror_leech_utils.gdrive_utils.list import GoogleDriveList
-from .mirror_leech_utils.rclone_utils.list import RcloneList
 from .mirror_leech_utils.status_utils.ffmpeg_status import FFmpegStatus
 from .mirror_leech_utils.status_utils.sevenz_status import SevenZStatus
 from .telegram_helper.message_utils import (
-    get_tg_link_message,
     send_message,
     send_status_message,
-    temp_download,
 )
 
 
 class TaskConfig:
-    """Holds all configuration and state for a single mirror/leech task."""
+    """Holds all configuration and state for a single download/upload task."""
 
     def __init__(self):
         """Initializes the TaskConfig object based on the incoming message."""
@@ -91,8 +71,6 @@ class TaskConfig:
         self.subname = ""
         self.name_sub = ""
         self.name_prefix = ""
-        self.metadata = ""
-        self.watermark = ""
         self.thumbnail_layout = ""
         self.folder_name = ""
         self.split_size = 0
@@ -101,11 +79,7 @@ class TaskConfig:
         self.size = 0
         self.subsize = 0
         self.proceed_count = 0
-        self.is_leech = False
-        self.is_jd = False
-        self.is_qbit = False
-        self.is_nzb = False
-        self.is_clone = False
+        self.is_leech = True
         self.is_ytdlp = False
         self.user_transmission = False
         self.hybrid_leech = False
@@ -113,11 +87,8 @@ class TaskConfig:
         self.compress = False
         self.select = False
         self.seed = False
-        self.compress = False
-        self.extract = False
         self.join = False
         self.private_link = False
-        self.stop_duplicate = False
         self.sample_video = False
         self.convert_audio = False
         self.convert_video = False
@@ -154,49 +125,8 @@ class TaskConfig:
         self.yt_description = None
         self.yt_playlist_id = None
 
-    def get_token_path(self, dest):
-        if dest.startswith("mtp:"):
-            return f"tokens/{self.user_id}.pickle"
-        if dest.startswith("sa:") or (
-            Config.USE_SERVICE_ACCOUNTS and not dest.startswith("tp:")
-        ):
-            return "accounts"
-        return "token.pickle"
-
-    def get_config_path(self, dest):
-        return (
-            f"rclone/{self.user_id}.conf"
-            if dest.startswith("mrcc:")
-            else "rclone.conf"
-        )
-
-    async def is_token_exists(self, path, status):
-        """Checks if Rclone config or GDrive token exists for the given path and operation status."""
-        if is_rclone_path(path):
-            config_path = self.get_config_path(path)
-            if config_path != "rclone.conf" and status == "up":
-                self.private_link = True
-            if not await aiopath.exists(config_path):
-                raise ValueError(f"Rclone Config: {config_path} does not exist!")
-        elif (status == "dl" and is_gdrive_link(path)) or (
-            status == "up" and is_gdrive_id(path)
-        ):
-            token_path = self.get_token_path(path)
-            if token_path.startswith("tokens/") and status == "up":
-                self.private_link = True
-            if not await aiopath.exists(token_path):
-                raise ValueError(f"Token not found! {token_path} does not exist!")
-
     async def before_start(self):
-        """Performs pre-task setup including:
-        - Name substitution, metadata, watermark settings.
-        - Excluded extensions.
-        - Rclone flags.
-        - Path validation and token checks for links and upload destinations.
-        - User transmission and hybrid leech settings.
-        - FFmpeg command processing.
-        - Leech specific settings like split size and document type.
-        """
+        """Performs pre-task setup."""
         self.name_sub = (
             self.name_sub
             or self.user_dict.get("NAME_SUBSTITUTE", False)
@@ -211,59 +141,19 @@ class TaskConfig:
             or self.user_dict.get("NAME_PREFIX", False)
             or (Config.NAME_PREFIX if "NAME_PREFIX" not in self.user_dict else "")
         )
-        self.metadata = (
-            self.metadata
-            or self.user_dict.get("METADATA_KEY", False)
-            or (Config.METADATA_KEY if "METADATA_KEY" not in self.user_dict else "")
-        )
-        self.watermark = (
-            self.watermark
-            or self.user_dict.get("WATERMARK_KEY", False)
-            or (
-                Config.WATERMARK_KEY if "WATERMARK_KEY" not in self.user_dict else ""
-            )
-        )
+
         if self.name_sub:
             self.name_sub = [x.split("/") for x in self.name_sub.split(" | ")]
         self.excluded_extensions = self.user_dict.get("EXCLUDED_EXTENSIONS") or (
             excluded_extensions
             if "EXCLUDED_EXTENSIONS" not in self.user_dict
-            else ["aria2", "!qB"]
+            else []
         )
         self.included_extensions = self.user_dict.get("INCLUDED_EXTENSIONS") or (
             included_extensions
             if "INCLUDED_EXTENSIONS" not in self.user_dict
             else []
         )
-        if not self.rc_flags:
-            if self.user_dict.get("RCLONE_FLAGS"):
-                self.rc_flags = self.user_dict["RCLONE_FLAGS"]
-            elif "RCLONE_FLAGS" not in self.user_dict and Config.RCLONE_FLAGS:
-                self.rc_flags = Config.RCLONE_FLAGS
-        if self.link not in ["rcl", "gdl"]:
-            if not self.is_jd:
-                if is_rclone_path(self.link):
-                    if not self.link.startswith("mrcc:") and self.user_dict.get(
-                        "USER_TOKENS",
-                        False,
-                    ):
-                        self.link = f"mrcc:{self.link}"
-                    await self.is_token_exists(self.link, "dl")
-            elif is_gdrive_link(self.link):
-                if not self.link.startswith(
-                    ("mtp:", "tp:", "sa:"),
-                ) and self.user_dict.get("USER_TOKENS", False):
-                    self.link = f"mtp:{self.link}"
-                await self.is_token_exists(self.link, "dl")
-        elif self.link == "rcl":
-            if not self.is_ytdlp and not self.is_jd:
-                self.link = await RcloneList(self).get_rclone_path("rcd")
-                if not is_rclone_path(self.link):
-                    raise ValueError(self.link)
-        elif self.link == "gdl" and not self.is_ytdlp and not self.is_jd:
-            self.link = await GoogleDriveList(self).get_target_id("gdd")
-            if not is_gdrive_id(self.link):
-                raise ValueError(self.link)
 
         self.user_transmission = TgClient.IS_PREMIUM_USER and (
             self.user_dict.get("USER_TRANSMISSION")
@@ -273,20 +163,8 @@ class TaskConfig:
             )
         )
 
-        if self.user_dict.get("UPLOAD_PATHS", False):
-            if self.up_dest in self.user_dict["UPLOAD_PATHS"]:
-                self.up_dest = self.user_dict["UPLOAD_PATHS"][self.up_dest]
-        elif (
-            (
-                "UPLOAD_PATHS" not in self.user_dict
-                or not self.user_dict["UPLOAD_PATHS"]
-            )
-            and Config.UPLOAD_PATHS
-            and self.up_dest in Config.UPLOAD_PATHS
-        ):
-            self.up_dest = Config.UPLOAD_PATHS[self.up_dest]
-
         if self.ffmpeg_cmds:
+            from copy import deepcopy
             if self.user_dict.get("FFMPEG_CMDS", None):
                 ffmpeg_dict = deepcopy(self.user_dict["FFMPEG_CMDS"])
             elif (
@@ -301,6 +179,7 @@ class TaskConfig:
                 if isinstance(key, tuple):
                     cmds.extend(list(key))
                 elif ffmpeg_dict is not None and key in ffmpeg_dict:
+                    from collections import Counter
                     for ind, vl in enumerate(ffmpeg_dict[key]):
                         if variables := set(findall(r"\{(.*?)\}", vl)):
                             ff_values = (
@@ -315,350 +194,81 @@ class TaskConfig:
                         else:
                             cmds.append(vl)
             self.ffmpeg_cmds = cmds
-        if not self.is_leech:
-            self.stop_duplicate = self.user_dict.get("STOP_DUPLICATE") or (
-                "STOP_DUPLICATE" not in self.user_dict and Config.STOP_DUPLICATE
-            )
-            default_upload = (
-                self.user_dict.get("DEFAULT_UPLOAD", "") or Config.DEFAULT_UPLOAD
-            )
 
-            if (not self.up_dest and default_upload == "rc") or self.up_dest == "rc":
-                self.up_dest = (
-                    self.user_dict.get("RCLONE_PATH") or Config.RCLONE_PATH
-                )
-            elif (
-                not self.up_dest and default_upload == "gd"
-            ) or self.up_dest == "gd":
-                self.up_dest = self.user_dict.get("GDRIVE_ID") or Config.GDRIVE_ID
-            elif (
-                not self.up_dest and default_upload == "gofile"
-            ) or self.up_dest in ["gofile", "gf"]:
-                self.up_dest = "gofile"
+        chat = Config.LEECH_DUMP_CHAT
+        main_chat = chat[0] if isinstance(chat, list) and chat else chat or ""
+        self.up_dest = self.up_dest or main_chat
+        self.hybrid_leech = TgClient.IS_PREMIUM_USER and (
+            self.user_dict.get("HYBRID_LEECH")
+            or (Config.HYBRID_LEECH and "HYBRID_LEECH" not in self.user_dict)
+        )
+        if self.bot_trans:
+            self.user_transmission = False
+            self.hybrid_leech = False
+        if self.user_trans:
+            self.user_transmission = TgClient.IS_PREMIUM_USER
+        if self.up_dest:
+            if not isinstance(self.up_dest, int):
+                if self.up_dest.startswith("b:"):
+                    self.up_dest = self.up_dest.replace("b:", "", 1)
+                    self.user_transmission = False
+                    self.hybrid_leech = False
+                elif self.up_dest.startswith("u:"):
+                    self.up_dest = self.up_dest.replace("u:", "", 1)
+                    self.user_transmission = TgClient.IS_PREMIUM_USER
+                elif self.up_dest.startswith("h:"):
+                    self.up_dest = self.up_dest.replace("h:", "", 1)
+                    self.user_transmission = TgClient.IS_PREMIUM_USER
+                    self.hybrid_leech = self.user_transmission
+                if "|" in self.up_dest:
+                    self.up_dest, self.chat_thread_id = [
+                        int(x) if x.lstrip("-").isdigit() else x
+                        for x in self.up_dest.split("|", 1)
+                    ]
+                elif self.up_dest.lstrip("-").isdigit():
+                    self.up_dest = int(self.up_dest)
+                elif self.up_dest.lower() == "pm":
+                    self.up_dest = self.user_id
 
-            chosen_service = ""
-            if self.up_dest == "yt" or (
-                self.up_dest and self.up_dest.startswith("yt:")
-            ):
-                chosen_service = "yt"
-                self.resolve_youtube_settings()
+        if self.split_size:
+            if self.split_size.isdigit():
+                self.split_size = int(self.split_size)
             else:
-                chosen_service = default_upload
+                self.split_size = get_size_bytes(self.split_size)
+        self.split_size = (
+            self.split_size
+            or self.user_dict.get("LEECH_SPLIT_SIZE")
+            or Config.LEECH_SPLIT_SIZE
+        )
+        self.max_split_size = (
+            TgClient.MAX_SPLIT_SIZE if self.user_transmission else 2097152000
+        )
+        self.split_size = min(self.split_size, self.max_split_size)
 
-            if chosen_service not in ["yt", "gofile"] and not self.up_dest:
-                raise ValueError(
-                    f"No Upload Destination path/ID for service '{chosen_service}'! Please set an upload path or a default for it."
-                )
-            if self.up_dest == "gofile":
-                user_token = self.user_dict.get("GOFILE_TOKEN")
-                if not user_token and not Config.GOFILE_API:
-                    raise ValueError(
-                        "GoFile API token not configured! Please set your GoFile token in user settings or configure a global token."
-                    )
-            if self.up_dest not in ["rcl", "gdl"]:
-                if is_gdrive_id(self.up_dest):
-                    if not self.up_dest.startswith(
-                        ("mtp:", "tp:", "sa:")
-                    ) and self.user_dict.get("USER_TOKENS", False):
-                        self.up_dest = f"mtp:{self.up_dest}"
-                elif is_rclone_path(self.up_dest):
-                    if not self.up_dest.startswith("mrcc:") and self.user_dict.get(
-                        "USER_TOKENS", False
-                    ):
-                        self.up_dest = f"mrcc:{self.up_dest}"
-                    self.up_dest = self.up_dest.strip("/")
-                await self.is_token_exists(self.up_dest, "up")
-
-            if self.up_dest == "rcl":
-                if self.is_clone:
-                    if not is_rclone_path(self.link):
-                        raise ValueError(
-                            "You can't clone from different types of tools",
-                        )
-                    config_path = self.get_config_path(self.link)
-                else:
-                    config_path = None
-                self.up_dest = await RcloneList(self).get_rclone_path(
-                    "rcu",
-                    config_path,
-                )
-                if not is_rclone_path(self.up_dest):
-                    raise ValueError(self.up_dest)
-            elif self.up_dest == "gdl":
-                if self.is_clone:
-                    if not is_gdrive_link(self.link):
-                        raise ValueError(
-                            "You can't clone from different types of tools",
-                        )
-                    token_path = self.get_token_path(self.link)
-                else:
-                    token_path = None
-                self.up_dest = await GoogleDriveList(self).get_target_id(
-                    "gdu",
-                    token_path,
-                )
-                if not is_gdrive_id(self.up_dest):
-                    raise ValueError(self.up_dest)
-
-            elif self.is_clone:
-                if is_gdrive_link(self.link) and self.get_token_path(
-                    self.link,
-                ) != self.get_token_path(self.up_dest):
-                    raise ValueError("You must use the same token to clone!")
-                if is_rclone_path(self.link) and self.get_config_path(
-                    self.link,
-                ) != self.get_config_path(self.up_dest):
-                    raise ValueError("You must use the same config to clone!")
-        else:
-            chat = Config.LEECH_DUMP_CHAT
-            main_chat = chat[0] if isinstance(chat, list) and chat else chat or ""
-            self.up_dest = self.up_dest or main_chat
-            self.hybrid_leech = TgClient.IS_PREMIUM_USER and (
-                self.user_dict.get("HYBRID_LEECH")
-                or (Config.HYBRID_LEECH and "HYBRID_LEECH" not in self.user_dict)
-            )
-            if self.bot_trans:
-                self.user_transmission = False
-                self.hybrid_leech = False
-            if self.user_trans:
-                self.user_transmission = TgClient.IS_PREMIUM_USER
-            if self.up_dest:
-                if not isinstance(self.up_dest, int):
-                    if self.up_dest.startswith("b:"):
-                        self.up_dest = self.up_dest.replace("b:", "", 1)
-                        self.user_transmission = False
-                        self.hybrid_leech = False
-                    elif self.up_dest.startswith("u:"):
-                        self.up_dest = self.up_dest.replace("u:", "", 1)
-                        self.user_transmission = TgClient.IS_PREMIUM_USER
-                    elif self.up_dest.startswith("h:"):
-                        self.up_dest = self.up_dest.replace("h:", "", 1)
-                        self.user_transmission = TgClient.IS_PREMIUM_USER
-                        self.hybrid_leech = self.user_transmission
-                    if "|" in self.up_dest:
-                        self.up_dest, self.chat_thread_id = [
-                            int(x) if x.lstrip("-").isdigit() else x
-                            for x in self.up_dest.split("|", 1)
-                        ]
-                    elif self.up_dest.lstrip("-").isdigit():
-                        self.up_dest = int(self.up_dest)
-                    elif self.up_dest.lower() == "pm":
-                        self.up_dest = self.user_id
-
-                if self.user_transmission:
-                    try:
-                        chat = await TgClient.user.get_chat(self.up_dest)
-                    except Exception:
-                        chat = None
-                    if chat is None:
-                        LOGGER.warning(
-                            "Account of user session can't find the the destination chat!"
-                        )
-                        self.user_transmission = False
-                        self.hybrid_leech = False
-                    elif chat.type.name not in [
-                        "SUPERGROUP",
-                        "CHANNEL",
-                        "GROUP",
-                        "FORUM",
-                    ]:
-                        self.user_transmission = False
-                        self.hybrid_leech = False
-                    elif chat.is_admin:
-                        member = await chat.get_member(TgClient.user.me.id)
-                        if (
-                            not member.privileges.can_manage_chat
-                            or not member.privileges.can_delete_messages
-                        ):
-                            self.user_transmission = False
-                            self.hybrid_leech = False
-                            LOGGER.warning(
-                                "Enable manage chat and delete messages to account of the user session from administration settings!"
-                            )
-                    else:
-                        LOGGER.warning(
-                            "Promote the account of the user session to admin in the chat to get the benefit of user transmission!"
-                        )
-                        self.user_transmission = False
-                        self.hybrid_leech = False
-
-                if not self.user_transmission or self.hybrid_leech:
-                    try:
-                        chat = await self.client.get_chat(self.up_dest)
-                    except Exception:
-                        chat = None
-                    if chat is None:
-                        if self.user_transmission:
-                            self.hybrid_leech = False
-                        else:
-                            raise ValueError("Chat not found!")
-                    elif chat.type.name in [
-                        "SUPERGROUP",
-                        "CHANNEL",
-                        "GROUP",
-                        "FORUM",
-                    ]:
-                        if not chat.is_admin:
-                            raise ValueError(
-                                "Bot is not admin in the destination chat!"
-                            )
-                        member = await chat.get_member(self.client.me.id)
-                        if (
-                            not member.privileges.can_manage_chat
-                            or not member.privileges.can_delete_messages
-                        ):
-                            if not self.user_transmission:
-                                raise ValueError(
-                                    "You don't have enough privileges in this chat! Enable manage chat and delete messages for this bot!"
-                                )
-                            self.hybrid_leech = False
-                    else:
-                        try:
-                            await self.client.send_chat_action(
-                                self.up_dest,
-                                ChatAction.TYPING,
-                            )
-                        except Exception:
-                            raise ValueError(
-                                "Start the bot and try again!",
-                            ) from None
-            elif (
-                self.user_transmission or self.hybrid_leech
-            ) and not self.is_super_chat:
-                self.user_transmission = False
-                self.hybrid_leech = False
-            if self.split_size:
-                if self.split_size.isdigit():
-                    self.split_size = int(self.split_size)
-                else:
-                    self.split_size = get_size_bytes(self.split_size)
-            self.split_size = (
-                self.split_size
-                or self.user_dict.get("LEECH_SPLIT_SIZE")
-                or Config.LEECH_SPLIT_SIZE
-            )
-            self.max_split_size = (
-                TgClient.MAX_SPLIT_SIZE if self.user_transmission else 2097152000
-            )
-            self.split_size = min(self.split_size, self.max_split_size)
-
-            if not self.as_doc:
-                self.as_doc = (
-                    not self.as_med
-                    if self.as_med
-                    else (
-                        self.user_dict.get("AS_DOCUMENT", False)
-                        or (
-                            Config.AS_DOCUMENT
-                            and "AS_DOCUMENT" not in self.user_dict
-                        )
+        if not self.as_doc:
+            self.as_doc = (
+                not self.as_med
+                if self.as_med
+                else (
+                    self.user_dict.get("AS_DOCUMENT", False)
+                    or (
+                        Config.AS_DOCUMENT
+                        and "AS_DOCUMENT" not in self.user_dict
                     )
                 )
-
-            self.thumbnail_layout = (
-                self.thumbnail_layout
-                or self.user_dict.get("THUMBNAIL_LAYOUT", False)
-                or (
-                    Config.THUMBNAIL_LAYOUT
-                    if "THUMBNAIL_LAYOUT" not in self.user_dict
-                    else ""
-                )
             )
 
-            if self.thumb != "none" and is_telegram_link(self.thumb):
-                msg, _ = (await get_tg_link_message(self.thumb))[0]
-                self.thumb = (
-                    await create_thumb(msg) if msg.photo or msg.document else ""
-                )
-
-    def resolve_youtube_settings(self):
-        def get_cleaned_value(value, default, allowed=None, to_lower=False):
-            val = value if value is not None else self.user_dict.get(default)
-            if val:
-                val = val.strip()
-                if to_lower:
-                    val = val.lower()
-                if not allowed or val in allowed:
-                    return val
-            return None
-
-        self.yt_privacy = (
-            get_cleaned_value(
-                self.yt_privacy,
-                "YT_DEFAULT_PRIVACY",
-                allowed=["private", "public", "unlisted"],
-                to_lower=True,
+        self.thumbnail_layout = (
+            self.thumbnail_layout
+            or self.user_dict.get("THUMBNAIL_LAYOUT", False)
+            or (
+                Config.THUMBNAIL_LAYOUT
+                if "THUMBNAIL_LAYOUT" not in self.user_dict
+                else ""
             )
-            or self.yt_privacy
         )
-        if not self.yt_privacy:
-            self.yt_privacy = "unlisted"
-
-        self.yt_mode = (
-            get_cleaned_value(
-                self.yt_mode,
-                "YT_DEFAULT_FOLDER_MODE",
-                allowed=["playlist", "individual", "playlist_and_individual"],
-            )
-            or self.yt_mode
-        )
-        if not self.yt_mode:
-            self.yt_mode = "playlist"
-
-        tags_str = (
-            self.yt_tags
-            if self.yt_tags is not None
-            else self.user_dict.get("YT_DEFAULT_TAGS")
-        )
-        if tags_str is not None:
-            tags_str = tags_str.strip()
-            if tags_str.lower() == "none":
-                self.yt_tags = []
-            else:
-                self.yt_tags = [t.strip() for t in tags_str.split(",") if t.strip()]
-
-        self.yt_category = (
-            get_cleaned_value(self.yt_category, "YT_DEFAULT_CATEGORY", allowed=None)
-            if (
-                get_cleaned_value(
-                    self.yt_category,
-                    "YT_DEFAULT_CATEGORY",
-                    allowed=None,
-                    to_lower=False,
-                )
-                or ""
-            ).isdigit()
-            else self.yt_category
-        )
-
-        description = (
-            self.yt_description
-            if self.yt_description is not None
-            else self.user_dict.get("YT_DEFAULT_DESCRIPTION")
-        )
-        self.yt_description = (
-            description.strip() if description is not None else self.yt_description
-        )
-
-        if self.yt_playlist_id and self.yt_playlist_id.strip():
-            self.yt_playlist_id = self.yt_playlist_id.strip()
 
     async def get_tag(self, text: list):
-        if len(text) > 1 and text[1].startswith("Tag: "):
-            self.is_rss = True
-            user_info = text[1].split("Tag: ")
-            if len(user_info) >= 3:
-                id_ = user_info[-1]
-                self.tag = " ".join(user_info[:-1])
-            else:
-                self.tag, id_ = text[1].split("Tag: ")[1].split()
-            self.user = self.message.from_user = await self.client.get_users(
-                int(id_)
-            )
-            self.user_id = self.user.id
-            self.user_dict = user_data.get(self.user_id, {})
-            with contextlib.suppress(Exception):
-                await self.message.unpin()
         if self.user:
             if username := self.user.username:
                 self.tag = f"@{username}"
@@ -719,10 +329,7 @@ class TaskConfig:
         await obj(
             self.client,
             nextmsg,
-            self.is_qbit,
             self.is_leech,
-            self.is_jd,
-            self.is_nzb,
             self.same_dir,
             self.bulk,
             self.multi_tag,
@@ -759,10 +366,7 @@ class TaskConfig:
             await obj(
                 self.client,
                 nextmsg,
-                self.is_qbit,
                 self.is_leech,
-                self.is_jd,
-                self.is_nzb,
                 self.same_dir,
                 self.bulk,
                 self.multi_tag,
@@ -925,11 +529,11 @@ class TaskConfig:
                     for index in input_indexes:
                         if cmd[index + 1].startswith("mltb"):
                             var_cmd[index + 1] = file_path
-                        elif is_telegram_link(cmd[index + 1]):
-                            msg = (await get_tg_link_message(cmd[index + 1]))[0]
-                            file_dir = await temp_download(msg)
-                            inputs[index + 1] = file_dir
-                            var_cmd[index + 1] = file_dir
+                        # elif is_telegram_link(cmd[index + 1]): # Removed to simplify
+                        #     msg = (await get_tg_link_message(cmd[index + 1]))[0]
+                        #     file_dir = await temp_download(msg)
+                        #     inputs[index + 1] = file_dir
+                        #     var_cmd[index + 1] = file_dir
                     self.subsize = self.size
                     res = await ffmpeg.ffmpeg_cmds(var_cmd, file_path)
                     if res:
@@ -982,13 +586,6 @@ class TaskConfig:
                             for index in input_indexes:
                                 if cmd[index + 1].startswith("mltb"):
                                     var_cmd[index + 1] = f_path
-                                elif is_telegram_link(cmd[index + 1]):
-                                    msg = (
-                                        await get_tg_link_message(cmd[index + 1])
-                                    )[0]
-                                    file_dir = await temp_download(msg)
-                                    inputs[index + 1] = file_dir
-                                    var_cmd[index + 1] = file_dir
                             if not checked:
                                 checked = True
                                 async with task_dict_lock:
@@ -1408,210 +1005,3 @@ class TaskConfig:
                         self.is_cancelled = True
             return None
         return None
-
-    async def proceed_metadata(self, dl_path, gid):
-        """Adds metadata to MKV files based on the task's metadata key."""
-        key = self.metadata
-        ffmpeg = FFMpeg(self)
-        checked = False
-        if self.is_file:
-            if is_mkv(dl_path):
-                cmd, temp_file = await get_metadata_cmd(dl_path, key)
-                if cmd:
-                    if not checked:
-                        checked = True
-                        async with task_dict_lock:
-                            task_dict[self.mid] = FFmpegStatus(
-                                self,
-                                ffmpeg,
-                                gid,
-                                "Metadata",
-                            )
-                        self.progress = False
-                        await cpu_eater_lock.acquire()
-                        self.progress = True
-                    self.subsize = self.size
-                    res = await ffmpeg.metadata_watermark_cmds(cmd, dl_path)
-                    if res:
-                        os.replace(temp_file, dl_path)
-                    elif await aiopath.exists(temp_file):
-                        os.remove(temp_file)
-        else:
-            for dirpath, _, files in await sync_to_async(
-                walk,
-                dl_path,
-                topdown=False,
-            ):
-                for file_ in files:
-                    file_path = ospath.join(dirpath, file_)
-                    if self.is_cancelled:
-                        cpu_eater_lock.release()
-                        return ""
-                    self.proceed_count += 1
-                    if is_mkv(file_path):
-                        cmd, temp_file = await get_metadata_cmd(file_path, key)
-                        if cmd:
-                            if not checked:
-                                checked = True
-                                async with task_dict_lock:
-                                    task_dict[self.mid] = FFmpegStatus(
-                                        self,
-                                        ffmpeg,
-                                        gid,
-                                        "Metadata",
-                                    )
-                                self.progress = False
-                                await cpu_eater_lock.acquire()
-                                self.progress = True
-                            LOGGER.info(f"Running metadata command for: {file_path}")
-                            self.subsize = await aiopath.getsize(file_path)
-                            self.subname = file_
-                            res = await ffmpeg.metadata_watermark_cmds(
-                                cmd,
-                                file_path,
-                            )
-                            if res:
-                                os.replace(temp_file, file_path)
-                            elif await aiopath.exists(temp_file):
-                                os.remove(temp_file)
-        if checked:
-            cpu_eater_lock.release()
-        return dl_path
-
-    async def proceed_watermark(self, dl_path, gid):
-        """Adds a text watermark to MKV video files."""
-        key = self.watermark
-        ffmpeg = FFMpeg(self)
-        checked = False
-        if self.is_file:
-            if is_mkv(dl_path):
-                cmd, temp_file = await get_watermark_cmd(dl_path, key)
-                if cmd:
-                    if not checked:
-                        checked = True
-                        async with task_dict_lock:
-                            task_dict[self.mid] = FFmpegStatus(
-                                self,
-                                ffmpeg,
-                                gid,
-                                "Watermark",
-                            )
-                        self.progress = False
-                        await cpu_eater_lock.acquire()
-                        self.progress = True
-                    self.subsize = self.size
-                    res = await ffmpeg.metadata_watermark_cmds(cmd, dl_path)
-                    if res:
-                        os.replace(temp_file, dl_path)
-                    elif await aiopath.exists(temp_file):
-                        os.remove(temp_file)
-        else:
-            for dirpath, _, files in await sync_to_async(
-                walk,
-                dl_path,
-                topdown=False,
-            ):
-                for file_ in files:
-                    file_path = ospath.join(dirpath, file_)
-                    if self.is_cancelled:
-                        cpu_eater_lock.release()
-                        return ""
-                    if is_mkv(file_path):
-                        cmd, temp_file = await get_watermark_cmd(file_path, key)
-                        if cmd:
-                            if not checked:
-                                checked = True
-                                async with task_dict_lock:
-                                    task_dict[self.mid] = FFmpegStatus(
-                                        self,
-                                        ffmpeg,
-                                        gid,
-                                        "Watermark",
-                                    )
-                                self.progress = False
-                                await cpu_eater_lock.acquire()
-                                self.progress = True
-                            LOGGER.info(
-                                f"Running watermark command for: {file_path}"
-                            )
-                            self.subsize = await aiopath.getsize(file_path)
-                            self.subname = file_
-                            res = await ffmpeg.metadata_watermark_cmds(
-                                cmd,
-                                file_path,
-                            )
-                            if res:
-                                os.replace(temp_file, file_path)
-                            elif await aiopath.exists(temp_file):
-                                os.remove(temp_file)
-        if checked:
-            cpu_eater_lock.release()
-        return dl_path
-
-    async def proceed_embed_thumb(self, dl_path, gid):
-        """Embeds a thumbnail into MKV video files."""
-        thumb = self.e_thumb
-        ffmpeg = FFMpeg(self)
-        checked = False
-        if self.is_file:
-            if is_mkv(dl_path):
-                cmd, temp_file = await get_embed_thumb_cmd(dl_path, thumb)
-                if cmd:
-                    if not checked:
-                        checked = True
-                        async with task_dict_lock:
-                            task_dict[self.mid] = FFmpegStatus(
-                                self,
-                                ffmpeg,
-                                gid,
-                                "E_thumb",
-                            )
-                        self.progress = False
-                        await cpu_eater_lock.acquire()
-                        self.progress = True
-                    self.subsize = self.size
-                    res = await ffmpeg.metadata_watermark_cmds(cmd, dl_path)
-                    if res:
-                        os.replace(temp_file, dl_path)
-                    elif await aiopath.exists(temp_file):
-                        os.remove(temp_file)
-        else:
-            for dirpath, _, files in await sync_to_async(
-                walk,
-                dl_path,
-                topdown=False,
-            ):
-                for file_ in files:
-                    file_path = ospath.join(dirpath, file_)
-                    if self.is_cancelled:
-                        cpu_eater_lock.release()
-                        return ""
-                    if is_mkv(file_path):
-                        cmd, temp_file = await get_embed_thumb_cmd(file_path, thumb)
-                        if cmd:
-                            if not checked:
-                                checked = True
-                                async with task_dict_lock:
-                                    task_dict[self.mid] = FFmpegStatus(
-                                        self,
-                                        ffmpeg,
-                                        gid,
-                                        "E_thumb",
-                                    )
-                                self.progress = False
-                                await cpu_eater_lock.acquire()
-                                self.progress = True
-                            LOGGER.info(f"Running cmd for: {file_path}")
-                            self.subsize = await aiopath.getsize(file_path)
-                            self.subname = file_
-                            res = await ffmpeg.metadata_watermark_cmds(
-                                cmd,
-                                file_path,
-                            )
-                            if res:
-                                os.replace(temp_file, file_path)
-                            elif await aiopath.exists(temp_file):
-                                os.remove(temp_file)
-        if checked:
-            cpu_eater_lock.release()
-        return dl_path

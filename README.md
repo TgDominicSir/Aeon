@@ -1,40 +1,85 @@
-![](https://github.com/5hojib/5hojib/raw/main/images/Aeon-MLTB.gif)
+# Dominic Simple YT-DLP Downloader Bot
 
+A lightweight and efficient Telegram bot for downloading media from YouTube, TikTok, Instagram, and other yt-dlp supported sites, and uploading them directly to Telegram.
 
-# Aeon-MLTB Bot
-
-Aeon-MLTB is a streamlined and feature-rich bot designed for efficient deployment and enhanced functionality.
-
+## Credits
+All credits for this version go to **Dominic**.
 
 ## Features
 
-- **Minimalistic and Optimized**: Simplified by removing unnecessary code for better performance.
-- **Effortless Deployment**: Fully configured for quick and easy deployment to Heroku.
-- **Enhanced Capabilities**: Integrates features from multiple sources to provide a versatile bot experience.
+- **Fast Downloader**: Powered by `yt-dlp` for high-speed downloads.
+- **Universal Access**: Works for everyone in Private Messages and in any group where the bot is an admin.
+- **Real-time Status**: Follow your downloads with a sleek progress bar.
+- **Customizable**: Change settings like maximum concurrent tasks (default: 12) on the fly.
+- **Easy Deployment**: Fully compatible with Heroku and VPS.
 
+## User Settings
 
-## Read these
+Users can customize their experience using the `/settings` command:
 
-- [Deployment](https://github.com/AeonOrg/Aeon-MLTB/blob/main/docs/DEPLOYMENT.md)
-- [Configuration](https://github.com/AeonOrg/Aeon-MLTB/blob/main/docs/CONFIGURATIONS.md)
-- [Features](https://github.com/AeonOrg/Aeon-MLTB/blob/main/docs/FEATURES.md)
-- [Commands](https://github.com/AeonOrg/Aeon-MLTB/blob/main/docs/COMMANDS.md)
-- [Extras](https://github.com/AeonOrg/Aeon-MLTB/blob/main/docs/EXTRAS.md)
+- **LEECH_SPLIT_SIZE**: Set the maximum size for a single file (e.g., 2GB).
+- **AS_DOCUMENT**: Choose to receive files as documents instead of media.
+- **MEDIA_GROUP**: Send multiple files from a single link as a media group.
+- **NAME_PREFIX**: Add a custom prefix to all downloaded files.
+- **THUMBNAIL**: Upload a custom thumbnail for your downloads.
 
+## Supported Sites
 
-## Contributing
+This bot supports all sites compatible with `yt-dlp`, including:
 
-We welcome contributions! Whether it's bug fixes, feature enhancements, or general improvements:
-- **Report issues**: Open an issue for bugs or suggestions.
-- **Submit pull requests**: Share your contributions with the community.
+- **YouTube**: Videos, Shorts, Playlists.
+- **TikTok**: Videos (with/without watermark).
+- **Instagram**: Reels, IGTV, Posts.
+- **Twitter/X**: Videos.
+- **Facebook**: Public videos.
+- **SoundCloud**: Audio tracks.
+- **And 1000+ more!** [Full list here](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md).
 
+## Setup and Deployment
 
-## License
+### Required Configuration
 
-This project is licensed under the MIT License. Refer to the [LICENSE](LICENSE) file for details.
+- `BOT_TOKEN`: Your Telegram Bot Token.
+- `OWNER_ID`: Your Telegram User ID.
+- `TELEGRAM_API`: Your Telegram API ID.
+- `TELEGRAM_HASH`: Your Telegram API Hash.
 
+### Optional Configuration
+
+- `DATABASE_URL`: MongoDB URL for persisting settings and custom thumbnails.
+- `QUEUE_ALL`: Maximum concurrent tasks bot-wide (default: 12).
+- `LEECH_DUMP_CHAT`: Chat ID where all downloads will be logged/backed up.
+
+### Deployment on Heroku
+
+1. Create a new app on Heroku.
+2. Connect your GitHub repository.
+3. Add the required config vars in the app settings.
+4. Deploy the branch.
+5. Enable the `worker` dyno.
+
+### Deployment on VPS
+
+1. Clone the repository.
+2. Install dependencies: `pip install -r requirements.txt`.
+3. Create a `config.py` file or set Environment Variables.
+4. Run the bot: `python3 -m bot`.
+
+## Usage
+
+- `/ytdl [link]` - Download media with format selection (Video/Audio/Quality).
+- `/ytdlleech [link]` - Download the best available quality directly.
+- `/status` - View all active downloads and bot performance.
+- `/settings` - Access your personal download settings.
+- `/cancel` - Stop an ongoing task.
+
+## Admin Commands (Owner/Sudo Only)
+
+- `/botsettings` - Configure bot-wide limits and variables.
+- `/stats` - Detailed system and bot statistics.
+- `/restart` - Reboot the bot instance.
+- `/log` - View recent bot logs.
 
 ## Acknowledgements
 
-- Special thanks to the original developers of the [Mirror-Leech-Telegram-Bot](https://github.com/anasty17/mirror-leech-telegram-bot).
-- Gratitude to contributors from various repositories whose features have been integrated into Aeon-MLTB.
+- Core powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [Pyrogram](https://github.com/pyrogram/pyrogram).

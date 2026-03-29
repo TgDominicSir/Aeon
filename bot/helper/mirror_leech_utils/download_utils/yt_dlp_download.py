@@ -12,7 +12,6 @@ from bot import task_dict, task_dict_lock
 from bot.helper.ext_utils.bot_utils import async_to_sync, sync_to_async
 from bot.helper.ext_utils.task_manager import (
     check_running_tasks,
-    stop_duplicate_check,
 )
 from bot.helper.mirror_leech_utils.status_utils.queue_status import QueueStatus
 from bot.helper.mirror_leech_utils.status_utils.yt_dlp_status import YtDlpStatus
@@ -323,11 +322,6 @@ class YoutubeDLHelper:
                     "key": "EmbedThumbnail",
                 }
             )
-
-        msg, button = await stop_duplicate_check(self._listener)
-        if msg:
-            await self._listener.on_download_error(msg, button)
-            return
 
         add_to_queue, event = await check_running_tasks(self._listener)
         if add_to_queue:

@@ -3,8 +3,6 @@ from uvloop import install
 
 install()
 
-import os
-import subprocess
 from asyncio import Lock, new_event_loop, set_event_loop
 from datetime import datetime
 from logging import (
@@ -22,9 +20,6 @@ from time import time
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import timezone
-from uvloop import install
-
-from sabnzbdapi import SabnzbdClient
 
 getLogger("requests").setLevel(WARNING)
 getLogger("urllib3").setLevel(WARNING)
@@ -77,65 +72,23 @@ cores = "0,1,2,3"
 DOWNLOAD_DIR = "/app/downloads/"
 intervals = {
     "status": {},
-    "qb": "",
-    "jd": "",
-    "nzb": "",
     "stopAll": False,
 }
-qb_torrents = {}
 user_data = {}
-aria2_options = {}
-qbit_options = {}
-nzb_options = {}
 queued_dl = {}
 queued_up = {}
 status_dict = {}
 task_dict = {}
-jd_downloads = {}
-nzb_jobs = {}
-rss_dict = {}
 auth_chats = {}
-excluded_extensions = ["aria2", "!qB"]
+excluded_extensions = []
 included_extensions = []
-drives_names = []
-drives_ids = []
-index_urls = []
 sudo_users = []
 non_queued_dl = set()
 non_queued_up = set()
 multi_tags = set()
 task_dict_lock = Lock()
 queue_dict_lock = Lock()
-qb_listener_lock = Lock()
 cpu_eater_lock = Lock()
 same_directory_lock = Lock()
-nzb_listener_lock = Lock()
-jd_listener_lock = Lock()
-shorteners_list = []
-
-sabnzbd_client = SabnzbdClient(
-    host="http://localhost",
-    api_key="mltb",
-    port="8070",
-)
-subprocess.run(["xnox", "-d", f"--profile={os.getcwd()}"], check=False)
-subprocess.run(
-    [
-        "xnzb",
-        "-f",
-        "sabnzbd/SABnzbd.ini",
-        "-s",
-        ":::8070",
-        "-b",
-        "0",
-        "-d",
-        "-c",
-        "-l",
-        "0",
-        "--console",
-    ],
-    check=False,
-)
-
 
 scheduler = AsyncIOScheduler(event_loop=bot_loop)
