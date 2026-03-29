@@ -1,7 +1,6 @@
 from re import IGNORECASE, escape, search
 
 from bot.helper.ext_utils.help_messages import nsfw_keywords
-from bot.helper.telegram_helper.button_build import ButtonMaker
 
 
 async def error_check(message):

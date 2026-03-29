@@ -1,7 +1,6 @@
 from asyncio import (
     create_subprocess_exec,
     create_subprocess_shell,
-    gather,
     sleep,
 )
 from functools import partial
@@ -9,15 +8,12 @@ from io import BytesIO
 from os import getcwd
 from time import time
 
-from aiofiles import open as aiopen
 from aiofiles.os import path as aiopath
-from aiofiles.os import remove, rename
-from aioshutil import rmtree
+from aiofiles.os import remove
 from pyrogram.filters import create
 from pyrogram.handlers import MessageHandler
 
 from bot import (
-    LOGGER,
     auth_chats,
     excluded_extensions,
     included_extensions,
@@ -222,7 +218,7 @@ async def edit_bot_settings(client, query):
         await query.answer()
         globals()["start"] = 0
         await update_buttons(message, None)
-    elif data[1] in ["var"]:
+    elif data[1] == "var":
         await query.answer()
         await update_buttons(message, data[1])
     elif data[1] == "resetvar":
