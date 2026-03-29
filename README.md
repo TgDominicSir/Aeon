@@ -1,40 +1,53 @@
-![](https://github.com/5hojib/5hojib/raw/main/images/Aeon-MLTB.gif)
+# Simple YT-DLP Downloader Bot
 
-
-# Aeon-MLTB Bot
-
-Aeon-MLTB is a streamlined and feature-rich bot designed for efficient deployment and enhanced functionality.
-
+A lightweight and efficient Telegram bot for downloading media from YouTube, TikTok, Instagram, and other yt-dlp supported sites, and uploading them directly to Telegram.
 
 ## Features
 
-- **Minimalistic and Optimized**: Simplified by removing unnecessary code for better performance.
-- **Effortless Deployment**: Fully configured for quick and easy deployment to Heroku.
-- **Enhanced Capabilities**: Integrates features from multiple sources to provide a versatile bot experience.
+- **Fast Downloader**: Powered by `yt-dlp` for high-speed downloads.
+- **Multiple Platform Support**: Download from YouTube, TikTok, Instagram, and more.
+- **Direct Telegram Upload**: Files are sent directly to your Telegram chat.
+- **Status Bar**: Real-time progress tracking for downloads and uploads.
+- **Easy Deployment**: Ready for Heroku and VPS.
 
+## Setup and Deployment
 
-## Read these
+### Required Configuration
 
-- [Deployment](https://github.com/AeonOrg/Aeon-MLTB/blob/main/docs/DEPLOYMENT.md)
-- [Configuration](https://github.com/AeonOrg/Aeon-MLTB/blob/main/docs/CONFIGURATIONS.md)
-- [Features](https://github.com/AeonOrg/Aeon-MLTB/blob/main/docs/FEATURES.md)
-- [Commands](https://github.com/AeonOrg/Aeon-MLTB/blob/main/docs/COMMANDS.md)
-- [Extras](https://github.com/AeonOrg/Aeon-MLTB/blob/main/docs/EXTRAS.md)
+- `BOT_TOKEN`: Your Telegram Bot Token.
+- `OWNER_ID`: Your Telegram User ID.
+- `TELEGRAM_API`: Your Telegram API ID.
+- `TELEGRAM_HASH`: Your Telegram API Hash.
 
+### Optional Configuration
 
-## Contributing
+- `DATABASE_URL`: MongoDB URL for persisting settings.
+- `LEECH_SPLIT_SIZE`: Max size for a single file (default: 2GB).
+- `LEECH_DUMP_CHAT`: Chat ID where files will be dumped.
 
-We welcome contributions! Whether it's bug fixes, feature enhancements, or general improvements:
-- **Report issues**: Open an issue for bugs or suggestions.
-- **Submit pull requests**: Share your contributions with the community.
+### Deployment on Heroku
 
+1. Create a new app on Heroku.
+2. Connect your GitHub repository.
+3. Add the required config vars in the app settings.
+4. Deploy the branch.
+5. Enable the `worker` dyno.
 
-## License
+### Deployment on VPS
 
-This project is licensed under the MIT License. Refer to the [LICENSE](LICENSE) file for details.
+1. Clone the repository.
+2. Install dependencies: `pip install -r requirements.txt`.
+3. Fill the `config.py` file based on `config_sample.py`.
+4. Run the bot: `python3 -m bot`.
 
+## Usage
+
+- `/ytdl [link]` - Download media as a video/audio based on selection.
+- `/ytdlleech [link]` - Leech media directly.
+- `/status` - Check current active tasks.
+- `/cancel` - Cancel a task.
 
 ## Acknowledgements
 
-- Special thanks to the original developers of the [Mirror-Leech-Telegram-Bot](https://github.com/anasty17/mirror-leech-telegram-bot).
-- Gratitude to contributors from various repositories whose features have been integrated into Aeon-MLTB.
+- Based on [Aeon-MLTB](https://github.com/AeonOrg/Aeon-MLTB).
+- Powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [Pyrogram](https://github.com/pyrogram/pyrogram).
