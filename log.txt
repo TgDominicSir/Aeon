@@ -1,0 +1,5 @@
+[29-Mar 09:37:51 PM] I - Loading config... [__main__:9]
+[29-Mar 09:37:52 PM] I - Creating client from BOT_TOKEN [telegram_manager:22]
+[29-Mar 10:05:24 PM] I - Loading config... [__main__:9]
+[29-Mar 10:08:02 PM] I - Loading config... [__main__:9]
+[29-Mar 10:08:02 PM] I - Creating client from BOT_TOKEN [telegram_manager:22]
