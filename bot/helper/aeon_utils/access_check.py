@@ -20,24 +20,11 @@ from bot.helper.telegram_helper.button_build import ButtonMaker
 async def error_check(message):
     """
     Performs various access checks for a user and message.
-
-    Checks include:
-    - Forced subscription (FSUB_IDS).
-    - If the user has initiated a private message with the bot.
-    - Token validity (expiry, generation of new tokens).
-    - NSFW content in the message.
-
-    Returns:
-        A tuple (final_msg, button) where final_msg is a formatted
-        error/info message string for the user (or None if no issues),
-        and button is a ButtonMaker object with relevant buttons (or None).
     """
     msg, button = [], None
     user = message.from_user or message.sender_chat
     user_id = user.id
     token_timeout = Config.TOKEN_TIMEOUT
-    if Config.RSS_CHAT and user_id == int(Config.RSS_CHAT):
-        return None, None
 
     if message.chat.type != message.chat.type.BOT:
         if FSUB_IDS := Config.FSUB_IDS:
@@ -84,7 +71,6 @@ async def error_check(message):
 
     if user_id not in {
         Config.OWNER_ID,
-        Config.RSS_CHAT,
         user_data.get(user_id, {}).get("SUDO"),
     }:
         token_msg, button = await token_check(user_id, button)
@@ -109,14 +95,6 @@ async def error_check(message):
 
 
 async def get_chat_info(channel_id):
-    """Gets chat information for the given channel ID.
-
-    Args:
-        channel_id: The ID of the channel.
-
-    Returns:
-        A Chat object if found, otherwise None.
-    """
     try:
         return await TgClient.bot.get_chat(channel_id)
     except PeerIdInvalid as e:
@@ -125,14 +103,6 @@ async def get_chat_info(channel_id):
 
 
 def is_nsfw(text):
-    """Checks if the given text contains NSFW keywords.
-
-    Args:
-        text: The text to check.
-
-    Returns:
-        True if NSFW keywords are found, False otherwise.
-    """
     pattern = (
         r"(?:^|\W|_)(?:"
         + "|".join(escape(keyword) for keyword in nsfw_keywords)
@@ -141,38 +111,8 @@ def is_nsfw(text):
     return bool(search(pattern, text, flags=IGNORECASE))
 
 
-def is_nsfw_data(data):
-    """Checks if the given data (list or dict from torrent info) contains NSFW content.
-
-    Args:
-        data: A list of items (strings or dicts with 'name') or a dict
-              with 'contents' (list of dicts with 'filename').
-
-    Returns:
-        True if NSFW content is found, False otherwise.
-    """
-    if isinstance(data, list):
-        return any(
-            is_nsfw(item.get("name", ""))
-            if isinstance(item, dict)
-            else is_nsfw(item)
-            for item in data
-        )
-    if isinstance(data, dict):
-        return any(is_nsfw(item["filename"]) for item in data.get("contents", []))
-    return False
-
-
 async def nsfw_precheck(message):
-    """Performs a pre-check for NSFW content in the message text or replied-to message.
-
-    Args:
-        message: The Pyrogram message object.
-
-    Returns:
-        True if NSFW content is detected, False otherwise.
-    """
-    if is_nsfw(message.text):
+    if is_nsfw(message.text or ""):
         return True
 
     reply_to = message.reply_to_message
@@ -186,22 +126,13 @@ async def nsfw_precheck(message):
                 return True
 
     return any(
-        is_nsfw(getattr(reply_to, attr))
+        is_nsfw(getattr(reply_to, attr) or "")
         for attr in ["caption", "text"]
         if hasattr(reply_to, attr) and getattr(reply_to, attr)
     )
 
 
 async def check_is_paid(chat, uid):
-    """Checks if a user is a member of the specified paid chat.
-
-    Args:
-        chat: The Pyrogram Chat object of the paid channel/group.
-        uid: The user ID to check.
-
-    Returns:
-        True if the user is a member, False otherwise.
-    """
     try:
         await chat.get_member(uid)
         return True
@@ -213,32 +144,12 @@ async def check_is_paid(chat, uid):
 
 
 async def is_paid(user_id):
-    """Checks if a user is considered 'paid' by verifying membership in PAID_CHANNEL_ID.
-
-    Args:
-        user_id: The user ID to check.
-
-    Returns:
-        True if the user is considered paid or if PAID_CHANNEL_ID is not set,
-        False otherwise.
-    """
     if chat := await get_chat_info(Config.PAID_CHANNEL_ID):
         return await check_is_paid(chat, user_id)
     return True
 
 
 async def token_check(user_id, button=None):
-    """
-    Checks token validity for a user. If expired or non-existent,
-    generates a new token and message/button for collection.
-
-    Args:
-        user_id: The user ID to check the token for.
-        button: An optional existing ButtonMaker instance to append to.
-
-    Returns:
-        A tuple (message_string, button_maker_instance) or (None, None).
-    """
     token_timeout = Config.TOKEN_TIMEOUT
     if not token_timeout or user_id == Config.OWNER_ID:
         return None, button

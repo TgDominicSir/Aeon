@@ -6,23 +6,11 @@ i = Config.CMD_SUFFIX
 
 class BotCommands:
     StartCommand = "start"
-    MirrorCommand = [f"mirror{i}", f"m{i}"]
-    JdMirrorCommand = [f"jdmirror{i}", f"jm{i}"]
-    NzbMirrorCommand = [f"nzbmirror{i}", f"nm{i}"]
     YtdlCommand = [f"ytdl{i}", f"y{i}"]
-    LeechCommand = [f"leech{i}", f"l{i}"]
-    JdLeechCommand = [f"jdleech{i}", f"jl{i}"]
-    NzbLeechCommand = [f"nzbleech{i}", f"nl{i}"]
     YtdlLeechCommand = [f"ytdlleech{i}", f"yl{i}"]
-    CloneCommand = f"clone{i}"
     MediaInfoCommand = f"mediainfo{i}"
-    CountCommand = f"count{i}"
-    DeleteCommand = f"del{i}"
     CancelAllCommand = f"cancelall{i}"
     ForceStartCommand = [f"forcestart{i}", f"fs{i}"]
-    ListCommand = f"list{i}"
-    SearchCommand = f"search{i}"
-    HydraSearchCommand = f"nzbsearch{i}"
     StatusCommand = [f"status{i}", "statusall"]
     UsersCommand = f"users{i}"
     AuthorizeCommand = f"auth{i}"
@@ -42,6 +30,3 @@ class BotCommands:
     UserSetCommand = f"settings{i}"
     SpeedTest = f"speedtest{i}"
     BroadcastCommand = [f"broadcast{i}", "broadcastall"]
-    SelectCommand = f"sel{i}"
-    RssCommand = f"rss{i}"
-    SoxCommand = [f"spectrum{i}", f"sox{i}"]

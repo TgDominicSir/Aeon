@@ -16,55 +16,29 @@ class Config:
     BOT_TOKEN: str = ""
     CMD_SUFFIX: str = ""
     DATABASE_URL: str = ""
-    DEFAULT_UPLOAD: str = "gd"
     EXCLUDED_EXTENSIONS: str = ""
     INCLUDED_EXTENSIONS: str = ""
     FFMPEG_CMDS: ClassVar[dict[str, list[str]]] = {}
-    FILELION_API: str = ""
-    GDRIVE_ID: str = ""
-    GOFILE_API: str = ""
-    GOFILE_FOLDER_ID: str = ""
     INCOMPLETE_TASK_NOTIFIER: bool = False
-    INDEX_URL: str = ""
-    JD_EMAIL: str = ""
-    JD_PASS: str = ""
-    IS_TEAM_DRIVE: bool = False
     LEECH_DUMP_CHAT: ClassVar[list[str]] = []
     LEECH_SPLIT_SIZE: int = 2097152000
     MEDIA_GROUP: bool = False
     HYBRID_LEECH: bool = False
-    HYDRA_IP: str = ""
-    HYDRA_API_KEY: str = ""
     NAME_SUBSTITUTE: str = r""
     OWNER_ID: int = 0
     QUEUE_ALL: int = 0
     QUEUE_DOWNLOAD: int = 0
     QUEUE_UPLOAD: int = 0
-    RCLONE_FLAGS: str = ""
-    RCLONE_PATH: str = ""
-    RCLONE_SERVE_URL: str = ""
-    RCLONE_SERVE_USER: str = ""
-    RCLONE_SERVE_PASS: str = ""
-    RCLONE_SERVE_PORT: int = 8080
-    RSS_CHAT: str = ""
-    RSS_DELAY: int = 600
-    RSS_SIZE_LIMIT: int = 0
-    STOP_DUPLICATE: bool = False
-    STREAMWISH_API: str = ""
     SUDO_USERS: str = ""
     TELEGRAM_API: int = 0
     TELEGRAM_HASH: str = ""
     TG_PROXY: ClassVar[dict[str, str]] = {}
     THUMBNAIL_LAYOUT: str = ""
-    TORRENT_TIMEOUT: int = 0
     UPLOAD_PATHS: ClassVar[dict[str, str]] = {}
     UPSTREAM_REPO: str = ""
-    USENET_SERVERS: ClassVar[list[dict[str, object]]] = []
     UPSTREAM_BRANCH: str = "main"
     USER_SESSION_STRING: str = ""
     USER_TRANSMISSION: bool = False
-    USE_SERVICE_ACCOUNTS: bool = False
-    WEB_PINCODE: bool = False
     YT_DLP_OPTIONS: ClassVar[dict[str, Any]] = {}
 
     # Aeon-MLTB Specific / Custom Features
@@ -78,7 +52,6 @@ class Config:
     FSUB_IDS: str = ""
     LOG_CHAT_ID: int = 0
     LEECH_FILENAME_CAPTION: str = ""
-    INSTADL_API: str = ""
     HEROKU_APP_NAME: str = ""
     HEROKU_API_KEY: str = ""
     NAME_PREFIX: str = ""
@@ -143,21 +116,8 @@ class Config:
         if isinstance(value, str):
             value = value.strip()
 
-        if key == "DEFAULT_UPLOAD":
-            if value.lower() not in ["yt", "gd", "rc", "gofile"]:
-                return "gd"
-            return value.lower()
-
-        if key in {"BASE_URL", "RCLONE_SERVE_URL", "INDEX_URL"}:
+        if key in {"BASE_URL", "INDEX_URL"}:
             return value.strip("/")
-
-        if key == "USENET_SERVERS" and (
-            not isinstance(value, list)
-            or not value
-            or not isinstance(value[0], dict)
-            or not value[0].get("host")
-        ):
-            return []
 
         return value
 

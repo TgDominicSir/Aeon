@@ -45,11 +45,6 @@ def add_handlers():
             BotCommands.CancelAllCommand,
             CustomFilters.authorized,
         ),
-        "clone_node": (
-            clone_node,
-            BotCommands.CloneCommand,
-            CustomFilters.authorized,
-        ),
         "aioexecute": (
             aioexecute,
             BotCommands.AExecCommand,
@@ -60,59 +55,9 @@ def add_handlers():
             BotCommands.ExecCommand,
             CustomFilters.sudo,
         ),
-        "clear": (
-            clear,
-            BotCommands.ClearLocalsCommand,
-            CustomFilters.sudo,
-        ),
-        "select": (
-            select,
-            BotCommands.SelectCommand,
-            CustomFilters.authorized,
-        ),
         "remove_from_queue": (
             remove_from_queue,
             BotCommands.ForceStartCommand,
-            CustomFilters.authorized,
-        ),
-        "count_node": (
-            count_node,
-            BotCommands.CountCommand,
-            CustomFilters.authorized,
-        ),
-        "delete_file": (
-            delete_file,
-            BotCommands.DeleteCommand,
-            CustomFilters.authorized,
-        ),
-        "gdrive_search": (
-            gdrive_search,
-            BotCommands.ListCommand,
-            CustomFilters.authorized,
-        ),
-        "mirror": (
-            mirror,
-            BotCommands.MirrorCommand,
-            CustomFilters.authorized,
-        ),
-        "jd_mirror": (
-            jd_mirror,
-            BotCommands.JdMirrorCommand,
-            CustomFilters.authorized,
-        ),
-        "leech": (
-            leech,
-            BotCommands.LeechCommand,
-            CustomFilters.authorized,
-        ),
-        "jd_leech": (
-            jd_leech,
-            BotCommands.JdLeechCommand,
-            CustomFilters.authorized,
-        ),
-        "get_rss_menu": (
-            get_rss_menu,
-            BotCommands.RssCommand,
             CustomFilters.authorized,
         ),
         "run_shell": (
@@ -155,11 +100,6 @@ def add_handlers():
             BotCommands.StatusCommand,
             CustomFilters.authorized,
         ),
-        "torrent_search": (
-            torrent_search,
-            BotCommands.SearchCommand,
-            CustomFilters.authorized,
-        ),
         "get_users_settings": (
             get_users_settings,
             BotCommands.UsersCommand,
@@ -195,26 +135,6 @@ def add_handlers():
             BotCommands.BroadcastCommand,
             CustomFilters.owner,
         ),
-        "nzb_mirror": (
-            nzb_mirror,
-            BotCommands.NzbMirrorCommand,
-            CustomFilters.authorized,
-        ),
-        "nzb_leech": (
-            nzb_leech,
-            BotCommands.NzbLeechCommand,
-            CustomFilters.authorized,
-        ),
-        "hydra_search": (
-            hydra_search,
-            BotCommands.HydraSearchCommand,
-            CustomFilters.authorized,
-        ),
-        "spectrum_handler": (
-            spectrum_handler,
-            BotCommands.SoxCommand,
-            CustomFilters.authorized,
-        ),
     }
 
     for handler_func, command_name, custom_filter in command_filters.values():
@@ -236,10 +156,6 @@ def add_handlers():
         "^botset": edit_bot_settings,
         "^canall": cancel_all_update,
         "^stopm": cancel_multi,
-        "^sel": confirm_selection,
-        "^list_types": select_type,
-        "^rss": rss_listener,
-        "^torser": torrent_search_update,
         "^userset": edit_user_settings,
         "^help": arg_usage,
         "^status": status_pages,
