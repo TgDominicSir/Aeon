@@ -1,6 +1,9 @@
-# Simple YT-DLP Downloader Bot
+# Dominic Simple YT-DLP Downloader Bot
 
 A lightweight and efficient Telegram bot for downloading media from YouTube, TikTok, Instagram, and other yt-dlp supported sites, and uploading them directly to Telegram.
+
+## Credits
+All credits for this version go to **Dominic**.
 
 ## Features
 
@@ -79,5 +82,4 @@ This bot supports all sites compatible with `yt-dlp`, including:
 
 ## Acknowledgements
 
-- Refactored from [Aeon-MLTB](https://github.com/AeonOrg/Aeon-MLTB).
 - Core powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [Pyrogram](https://github.com/pyrogram/pyrogram).

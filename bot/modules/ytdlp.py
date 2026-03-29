@@ -9,7 +9,7 @@ from yt_dlp import YoutubeDL
 
 from bot import DOWNLOAD_DIR, LOGGER, bot_loop, task_dict_lock
 from bot.core.config_manager import Config
-from bot.helper.aeon_utils.access_check import error_check
+from bot.helper.dominic_utils.access_check import error_check
 from bot.helper.ext_utils.bot_utils import (
     COMMAND_USAGE,
     arg_parser,
@@ -331,7 +331,6 @@ class YtDlp(TaskListener):
             "-cv": "",
             "-ns": "",
             "-np": "",
-            "-md": "",
             "-tl": "",
             "-ff": set(),
         }
@@ -361,7 +360,6 @@ class YtDlp(TaskListener):
         self.thumbnail_layout = args["-tl"]
         self.as_doc = args["-doc"]
         self.as_med = args["-med"]
-        self.metadata = args["-md"]
         self.folder_name = (
             f"/{args['-m']}".rstrip("/") if len(args["-m"]) > 0 else ""
         )

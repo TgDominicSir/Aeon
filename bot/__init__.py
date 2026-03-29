@@ -3,7 +3,6 @@ from uvloop import install
 
 install()
 
-import subprocess
 from asyncio import Lock, new_event_loop, set_event_loop
 from datetime import datetime
 from logging import (
@@ -21,7 +20,6 @@ from time import time
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pytz import timezone
-from uvloop import install
 
 getLogger("requests").setLevel(WARNING)
 getLogger("urllib3").setLevel(WARNING)
@@ -92,6 +90,5 @@ task_dict_lock = Lock()
 queue_dict_lock = Lock()
 cpu_eater_lock = Lock()
 same_directory_lock = Lock()
-shorteners_list = []
 
 scheduler = AsyncIOScheduler(event_loop=bot_loop)

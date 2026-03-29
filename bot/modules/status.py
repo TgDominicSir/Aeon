@@ -31,7 +31,13 @@ from bot.helper.telegram_helper.message_utils import (
 
 async def get_download_status(download):
     tool = download.tool
-    speed = download.speed() if tool in ["telegram", "yt-dlp"] else 0
+    if tool in [
+        "telegram",
+        "yt-dlp",
+    ]:
+        speed = download.speed()
+    else:
+        speed = 0
     return (
         await download.status()
         if iscoroutinefunction(download.status)
@@ -108,9 +114,6 @@ async def status_pages(_, query):
             "SamVid": 0,
             "ConvertMedia": 0,
             "FFmpeg": 0,
-            "Metadata": 0,
-            "Watermark": 0,
-            "EmbedThumb": 0,
         }
         dl_speed = 0
         up_speed = 0
@@ -145,19 +148,12 @@ async def status_pages(_, query):
                         tasks["ConvertMedia"] += 1
                     case MirrorStatus.STATUS_FFMPEG:
                         tasks["FFmpeg"] += 1
-                    case MirrorStatus.STATUS_METADATA:
-                        tasks["Metadata"] += 1
-                    case MirrorStatus.STATUS_WATERMARK:
-                        tasks["Watermark"] += 1
-                    case MirrorStatus.STATUS_ETHUMB:
-                        tasks["EmbedThumb"] += 1
                     case _:
                         tasks["Download"] += 1
 
         msg = f"""<b>DL:</b> {tasks["Download"]} | <b>UP:</b> {tasks["Upload"]} | <b>AR:</b> {tasks["Archive"]}
 <b>EX:</b> {tasks["Extract"]} | <b>SP:</b> {tasks["Split"]} | <b>QD:</b> {tasks["QueueDl"]} | <b>QU:</b> {tasks["QueueUp"]}
 <b>PA:</b> {tasks["Pause"]} | <b>SV:</b> {tasks["SamVid"]} | <b>CM:</b> {tasks["ConvertMedia"]} | <b>FF:</b> {tasks["FFmpeg"]}
-<b>MD:</b> {tasks["Metadata"]} | <b>WM:</b> {tasks["Watermark"]} | <b>ET:</b> {tasks["EmbedThumb"]}
 
 <b>ODLS:</b> {get_readable_file_size(dl_speed)}/s
 <b>OULS:</b> {get_readable_file_size(up_speed)}/s

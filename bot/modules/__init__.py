@@ -11,7 +11,7 @@ from .restart import (
     restart_bot,
     restart_notification,
 )
-from .services import aeon_callback, log, ping, start
+from .services import dominic_callback, log, ping, start
 from .shell import run_shell
 from .speedtest import speedtest
 from .stats import bot_stats, get_packages_version
@@ -25,7 +25,7 @@ from .ytdlp import ytdl, ytdl_leech
 
 __all__ = [
     "add_sudo",
-    "aeon_callback",
+    "dominic_callback",
     "aioexecute",
     "arg_usage",
     "authorize",

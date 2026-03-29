@@ -21,9 +21,11 @@ from bot import (
 )
 from bot.core.config_manager import Config
 from bot.helper.common import TaskConfig
+from bot.helper.ext_utils.bot_utils import sync_to_async
 from bot.helper.ext_utils.db_handler import database
 from bot.helper.ext_utils.files_utils import (
     clean_download,
+    create_recursive_symlink,
     get_path_size,
     join_files,
     remove_excluded_files,
@@ -174,9 +176,13 @@ class TaskListener(TaskConfig):
         up_dir = self.dir
         up_path = dl_path
         if not self.included_extensions:
-            await remove_excluded_files(self.dir, self.excluded_extensions)
+            await remove_excluded_files(
+                self.dir, self.excluded_extensions
+            )
         else:
-            await remove_non_included_files(self.dir, self.included_extensions)
+            await remove_non_included_files(
+                self.dir, self.included_extensions
+            )
         if not Config.QUEUE_ALL:
             async with queue_dict_lock:
                 if self.mid in non_queued_dl:
@@ -198,30 +204,6 @@ class TaskListener(TaskConfig):
                 await remove_excluded_files(up_dir, self.excluded_extensions)
             else:
                 await remove_non_included_files(up_dir, self.included_extensions)
-
-        if self.watermark:
-            up_path = await self.proceed_watermark(
-                up_path,
-                gid,
-            )
-            if self.is_cancelled:
-                return
-            self.is_file = await aiopath.isfile(up_path)
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-            self.size = await get_path_size(up_dir)
-            self.clear()
-
-        if self.metadata:
-            up_path = await self.proceed_metadata(
-                up_path,
-                gid,
-            )
-            if self.is_cancelled:
-                return
-            self.is_file = await aiopath.isfile(up_path)
-            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
-            self.size = await get_path_size(up_dir)
-            self.clear()
 
         if self.ffmpeg_cmds:
             up_path = await self.proceed_ffmpeg(

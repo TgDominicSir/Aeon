@@ -42,8 +42,6 @@ class Config:
     YT_DLP_OPTIONS: ClassVar[dict[str, Any]] = {}
 
     # Specific / Custom Features
-    METADATA_KEY: str = ""
-    WATERMARK_KEY: str = ""
     SET_COMMANDS: bool = True
     TOKEN_TIMEOUT: int = 0
     PAID_CHANNEL_ID: int = 0

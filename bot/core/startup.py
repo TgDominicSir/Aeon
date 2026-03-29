@@ -12,7 +12,6 @@ from bot import (
     auth_chats,
     excluded_extensions,
     included_extensions,
-    shorteners_list,
     sudo_users,
     user_data,
 )
@@ -93,7 +92,7 @@ async def load_settings():
                         await f.write(value)
 
         if await database.db.users.find_one():
-            for p in ["thumbnails", "tokens", "rclone"]:
+            for p in ["thumbnails", "tokens"]:
                 if not await aiopath.exists(p):
                     await makedirs(p)
             rows = database.db.users.find({})
@@ -101,20 +100,10 @@ async def load_settings():
                 uid = row["_id"]
                 del row["_id"]
                 thumb_path = f"thumbnails/{uid}.jpg"
-                rclone_config_path = f"rclone/{uid}.conf"
-                token_path = f"tokens/{uid}.pickle"
                 if row.get("THUMBNAIL"):
                     async with aiopen(thumb_path, "wb+") as f:
                         await f.write(row["THUMBNAIL"])
                     row["THUMBNAIL"] = thumb_path
-                if row.get("RCLONE_CONFIG"):
-                    async with aiopen(rclone_config_path, "wb+") as f:
-                        await f.write(row["RCLONE_CONFIG"])
-                    row["RCLONE_CONFIG"] = rclone_config_path
-                if row.get("TOKEN_PICKLE"):
-                    async with aiopen(token_path, "wb+") as f:
-                        await f.write(row["TOKEN_PICKLE"])
-                    row["TOKEN_PICKLE"] = token_path
                 user_data[uid] = row
             LOGGER.info("User data has been imported from the Database.")
 
@@ -202,43 +191,14 @@ async def update_variables():
 
 async def load_configurations():
     """Performs initial setup for configurations like .netrc,
-    starts the Gunicorn web server, loads shorteners.
+    starts the Gunicorn web server.
     """
-
-    process = await create_subprocess_shell(
-        "uv pip install -U truelink",
-    )
-    await process.wait()
-    from truelink import TrueLinkResolver
-
-    from bot.helper.mirror_leech_utils.download_utils.insta_resolver import (
-        InstagramResolver,
-    )
-
-    _ = TrueLinkResolver()
-    TrueLinkResolver.register_resolver("instagram.com", InstagramResolver)
 
     if not await aiopath.exists(".netrc"):
         async with aiopen(".netrc", "w"):
             pass
 
-    # We don't need aria.sh anymore
-    # await (
-    #     await create_subprocess_shell(
-    #         "chmod 600 .netrc && cp .netrc /root/.netrc && chmod +x aria.sh && ./aria.sh",
-    #     )
-    # ).wait()
-
     PORT = int(environ.get("PORT") or environ.get("BASE_URL_PORT") or "80")
-    # Gunicorn might still be needed for keeping the app alive on some platforms
     await create_subprocess_shell(
         f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{PORT}",
     )
-
-    if await aiopath.exists("shorteners.txt"):
-        async with aiopen("shorteners.txt") as f:
-            lines = await f.readlines()
-            for line in lines:
-                temp = line.strip().split()
-                if len(temp) == 2:
-                    shorteners_list.append({"domain": temp[0], "api_key": temp[1]})

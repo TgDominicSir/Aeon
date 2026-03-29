@@ -16,8 +16,6 @@ from bot.core.config_manager import Config
 from bot.helper.telegram_helper.button_build import ButtonMaker
 
 from .help_messages import (
-    CLONE_HELP_DICT,
-    MIRROR_HELP_DICT,
     YT_HELP_DICT,
 )
 from .telegraph_helper import telegraph
@@ -73,63 +71,7 @@ def _build_command_usage(help_dict, command_key):
 
 def create_help_buttons():
     """Initializes help button structures for various primary commands."""
-    _build_command_usage(MIRROR_HELP_DICT, "mirror")
     _build_command_usage(YT_HELP_DICT, "yt")
-    _build_command_usage(CLONE_HELP_DICT, "clone")
-
-
-def bt_selection_buttons(id_):
-    """
-    Generates buttons for BitTorrent file selection, including options for
-    web-based selection with or without a PIN code.
-
-    Args:
-        id_: The identifier for the torrent (GID or hash).
-
-    Returns:
-        A ButtonMaker menu object.
-    """
-    gid = id_[:12] if len(id_) > 25 else id_
-    pin = "".join([n for n in id_ if n.isdigit()][:4])
-    buttons = ButtonMaker()
-    if Config.WEB_PINCODE:
-        buttons.url_button("Select Files", f"{Config.BASE_URL}/app/files?gid={id_}")
-        buttons.data_button("Pincode", f"sel pin {gid} {pin}")
-    else:
-        buttons.url_button(
-            "Select Files",
-            f"{Config.BASE_URL}/app/files?gid={id_}&pin={pin}",
-        )
-    buttons.data_button("Done Selecting", f"sel done {gid} {id_}")
-    buttons.data_button("Cancel", f"sel cancel {gid}")
-    return buttons.build_menu(2)
-
-
-async def get_telegraph_list(telegraph_content):
-    """
-    Creates Telegraph pages from the provided content list.
-    If multiple content parts are provided, it attempts to edit them into a single series.
-
-    Args:
-        telegraph_content: A list of strings, where each string is the HTML content for a page.
-
-    Returns:
-        A ButtonMaker menu object with a button linking to the first Telegraph page.
-    """
-    path = [
-        (
-            await telegraph.create_page(
-                title="Aeon-MLTB Drive Search",
-                content=content,
-            )
-        )["path"]
-        for content in telegraph_content
-    ]
-    if len(path) > 1:
-        await telegraph.edit_telegraph(path, telegraph_content)
-    buttons = ButtonMaker()
-    buttons.url_button("🔎 VIEW", f"https://telegra.ph/{path[0]}")
-    return buttons.build_menu(1)
 
 
 def arg_parser(items, arg_base):
@@ -155,13 +97,11 @@ def arg_parser(items, arg_base):
         "-z",
         "-s",
         "-j",
-        "-d",
         "-sv",
         "-ss",
         "-f",
         "-fd",
         "-fu",
-        "-sync",
         "-hl",
         "-doc",
         "-med",
@@ -180,7 +120,6 @@ def arg_parser(items, arg_base):
                 "-f",
                 "-fd",
                 "-fu",
-                "-sync",
                 "-hl",
                 "-doc",
                 "-med",

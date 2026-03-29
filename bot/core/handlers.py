@@ -160,7 +160,7 @@ def add_handlers():
         "^help": arg_usage,
         "^status": status_pages,
         "^botrestart": confirm_restart,
-        "^aeon": aeon_callback,
+        "^dominic": dominic_callback,
     }
 
     for regex_filter, handler_func in regex_filters.items():
